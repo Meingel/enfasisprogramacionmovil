@@ -1,0 +1,41 @@
+name: enfasisprogramacionmovil
+description: "Temporizador Pomodoro con sonidos ambientales y estadísticas."
+publish_to: 'none' # Elimina esta línea si deseas publicar en pub.dev.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Cupertino Icons para iOS
+  cupertino_icons: ^1.0.8
+
+  # Paquete para persistir preferencias
+  shared_preferences: ^2.1.1
+
+  # Última versión estable de audioplayers (al momento: 6.4.0)
+  audioplayers: ^6.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets (imágenes + audios) para los sonidos
+  assets:
+    - assets/images/lluvia.jpg
+    - assets/images/bosque.jpg
+    - assets/images/cafeteria.jpg
+    - assets/images/ruido_blanco.jpg
+
+    - assets/sounds/lluvia.mp3
+    - assets/sounds/bosque.mp3
+    - assets/sounds/cafeteria.mp3
+    - assets/sounds/ruido_blanco.mp3
