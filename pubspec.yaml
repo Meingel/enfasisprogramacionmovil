@@ -4,7 +4,7 @@ publish_to: 'none' # Elimina esta línea si deseas publicar en pub.dev.
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.0.0 <4.0.0' # He ajustado esto para que sea más flexible con Flutter 3.x, manteniendo el enfoque en Dart 3
 
 dependencies:
   flutter:
@@ -14,10 +14,22 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Paquete para persistir preferencias
-  shared_preferences: ^2.1.1
+  shared_preferences: ^2.2.3
 
-  # Última versión estable de audioplayers (al momento: 6.4.0)
-  audioplayers: ^6.4.0
+  # Última versión estable de audioplayers
+  audioplayers: ^6.0.0
+
+  # === DEPENDENCIAS PARA ESTADISTICAS Y LOCALIZACION ===
+  # Para formatear fechas y horas (necesario para StatsService)
+  intl: ^0.20.2
+
+  # Para crear los gráficos de barras en la pantalla de estadísticas
+  fl_chart: 0.65.0 # Mantenemos esta versión que te ha dado menos problemas
+
+  # Para la localización de fechas y otros elementos de UI
+  flutter_localizations: # <--- ¡ESTA ES LA LÍNEA QUE DEBEMOS AÑADIR!
+    sdk: flutter
+  # ====================================================
 
 dev_dependencies:
   flutter_test:

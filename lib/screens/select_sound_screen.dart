@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'dart:async';
 
 class SelectSoundScreen extends StatefulWidget {
   const SelectSoundScreen({Key? key}) : super(key: key);
@@ -12,7 +13,6 @@ class SelectSoundScreen extends StatefulWidget {
 }
 
 class _SelectSoundScreenState extends State<SelectSoundScreen> {
-  // Lista de sonidos con nombre, descripción, ruta de imagen y ruta de audio
   final List<Map<String, String>> _sounds = [
     {
       'name': 'Lluvia',
@@ -40,16 +40,10 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
     },
   ];
 
-  // Sonido seleccionado ahora (por nombre)
   String _selectedSound = 'Lluvia';
-
-  // Volumen actual (0 a 100)
   double _volume = 50;
-
-  // Reproductor para preview en bucle
   AudioPlayer? _previewPlayer;
 
-  // Claves para SharedPreferences
   static const String _keySoundName = 'sound_name';
   static const String _keyVolume = 'sound_volume';
 
@@ -57,17 +51,41 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
   void initState() {
     super.initState();
     _previewPlayer = AudioPlayer();
+
+    // DEBUGGING: Escuchar todos los cambios de estado
+    _previewPlayer?.onPlayerStateChanged.listen((PlayerState state) {
+      print('DEBUG Player state changed: $state');
+      // Si el estado es 'stopped' y no es por stop() manual, es problema del loop o archivo
+      if (state == PlayerState.stopped && !_isStoppingManually) {
+        print('DEBUG: Player stopped unexpectedly. Audio file might be too short or loop failed.');
+      }
+    });
+
+    // DEBUGGING: Escuchar cuando la reproducción se completa (incluso en loop)
+    _previewPlayer?.onPlayerComplete.listen((_) {
+      print('DEBUG Playback completed. (This will fire repeatedly if looping)');
+      // Si esto se repite, significa que el loop está funcionando pero no se percibe
+      // Si solo se dispara una vez y luego PlayerState.stopped, el loop no está funcionando.
+    });
+
+    // DEBUGGING: Logs internos de audioplayers
+    _previewPlayer?.onLog.listen((event) {
+      print('DEBUG AudioPlayer Log: $event');
+    });
+
     _loadSoundPreferences();
   }
 
+  // Bandera para diferenciar un stop manual de un stop automático por fin de archivo
+  bool _isStoppingManually = false;
+
   @override
   void dispose() {
-    _previewPlayer?.stop();
+    _previewPlayer?.stop(); // Siempre detener al salir
     _previewPlayer?.dispose();
     super.dispose();
   }
 
-  // Lee sonido y volumen guardados y reproduce el preview
   Future<void> _loadSoundPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final String soundName = prefs.getString(_keySoundName) ?? 'Lluvia';
@@ -78,55 +96,52 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
       _volume = vol.toDouble();
     });
 
-    // Reproduce el sonido guardado como preview
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 100));
       _playPreview(_selectedSound, _volume / 100);
     });
   }
 
-  // Guarda en SharedPreferences
   Future<void> _saveSoundPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySoundName, _selectedSound);
     await prefs.setInt(_keyVolume, _volume.toInt());
   }
 
-  // Reproduce en bucle el sonido con nombre soundName a un volumen (0.0–1.0)
   Future<void> _playPreview(String soundName, double volume) async {
-    // 1) Detener cualquier reproducción previa
-    await _previewPlayer?.stop();
+    _isStoppingManually = true; // Indicar que el stop() es intencional
+    if (_previewPlayer != null) {
+      await _previewPlayer!.stop();
+    }
+    _isStoppingManually = false; // Resetear la bandera
 
-    // 2) Buscar el mapa del sonido por nombre
     final soundMap = _sounds.firstWhere((s) => s['name'] == soundName);
-    final audioPath = soundMap['audio']!; // ej. "assets/sounds/lluvia.mp3"
+    final audioPath = soundMap['audio']!;
 
-    // 3) Configurar el reproductor para que repita en bucle y ajustar volumen
-    await _previewPlayer!.setReleaseMode(ReleaseMode.loop);
-    await _previewPlayer!.setVolume(volume);
+    if (_previewPlayer != null) {
+      // DEBUG: Asegurar que el modo loop se aplica antes de reproducir
+      await _previewPlayer!.setReleaseMode(ReleaseMode.loop);
+      await _previewPlayer!.setVolume(volume);
+      final assetRelative = audioPath.replaceFirst('assets/', '');
 
-    // 4) Construir la ruta relativa adecuada (sin la carpeta "assets/")
-    final assetRelative = audioPath.replaceFirst('assets/', '');
-    print('🔊 Intentando reproducir: $assetRelative  — volumen: ${volume.toStringAsFixed(2)}');
-
-    // 5) Invocar play() sin asignar resultado, pues play() devuelve void
-    await _previewPlayer!.play(AssetSource(assetRelative));
-
-    // Ya no se imprime “Resultado de play()” porque play() no retorna valor
+      try {
+        await _previewPlayer!.play(AssetSource(assetRelative));
+        print('Playing: $assetRelative at volume $volume'); // DEJAR ESTE PRINT
+      } catch (e) {
+        print('Error playing audio: $e'); // DEJAR ESTE PRINT
+      }
+    }
   }
 
-
-  // Detiene el preview
   Future<void> _stopPreview() async {
+    _isStoppingManually = true; // Indicar que el stop() es intencional
     await _previewPlayer?.stop();
+    _isStoppingManually = false; // Resetear la bandera
   }
 
-  // Acción al pulsar “Listo”
   void _onDonePressed() async {
-    // 1) Detener preview
     await _stopPreview();
-    // 2) Guardar preferencias
     await _saveSoundPreferences();
-    // 3) Mostrar diálogo de confirmación
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -168,8 +183,8 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.of(ctx).pop(); // Cerrar diálogo
-                    Navigator.of(context).pop(); // Regresar a Home
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
                   },
                   child: const Text(
                     'OK',
@@ -222,8 +237,6 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Lista de sonidos con preview
               Expanded(
                 child: ListView.separated(
                   itemCount: _sounds.length,
@@ -238,7 +251,6 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
                         setState(() {
                           _selectedSound = sound['name']!;
                         });
-                        // Reproducir preview con el volumen actual
                         _playPreview(_selectedSound, _volume / 100);
                       },
                       child: Container(
@@ -299,12 +311,10 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Volumen con slider y valor numérico
               Row(
                 children: [
                   const Text(
-                    'Volume',
+                    'Volumen',
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   const Spacer(),
@@ -327,15 +337,12 @@ class _SelectSoundScreenState extends State<SelectSoundScreen> {
                   setState(() {
                     _volume = newValue;
                   });
-                  // Si hay un sonido en reproducción, actualizar volumen
                   _previewPlayer?.setVolume(_volume / 100);
                 },
                 activeColor: const Color(0xFF19E5C2),
                 inactiveColor: Colors.grey.shade700,
               ),
               const SizedBox(height: 24),
-
-              // Botón “Listo”
               SizedBox(
                 height: 48,
                 child: ElevatedButton(

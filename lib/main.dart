@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 // Importamos aquí todas nuestras pantallas
 import 'screens/home_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'; // Asegúrate de que esté importado
+import 'package:intl/date_symbol_data_local.dart';
 import 'screens/configure_cycles_screen.dart';
 import 'screens/select_sound_screen.dart';
 import 'screens/active_timer_screen.dart';

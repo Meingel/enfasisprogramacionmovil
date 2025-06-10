@@ -1,244 +1,364 @@
+// lib/screens/statistics_screen.dart
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart'; // Importa fl_chart
+import 'package:intl/intl.dart'; // Importa intl para formateo de fechas
+import '../services/stats_service.dart'; // Importa tu StatsService
 
-class StatisticsScreen extends StatelessWidget {
+class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({Key? key}) : super(key: key);
+  static const String routeName = '/statistics'; // Agrega la ruta si no la tienes
 
-  static const String routeName = '/statistics';
+  @override
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final StatsService _statsService = StatsService();
+
+  // Datos para la sección de resumen
+  int _totalCompletedCycles = 0;
+  double _percentageIncreaseLast7Days = 0.0;
+
+  // Datos para los gráficos
+  Map<String, int> _dailyStats = {};
+  Map<String, int> _weeklyStats = {};
+  Map<String, int> _monthlyStats = {};
+
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadStats();
+    // Añade un listener para recargar los datos cuando la pantalla es visible (útil al navegar de vuelta)
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _loadStats(); // Recarga los datos cada vez que cambia de pestaña
+      }
+    });
+    // Agrega un listener al ciclo de vida del widget para recargar cuando la pantalla se enfoca
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadStats();
+      }
+    });
+  }
+
+  // Se podría usar un RouteObserver para detectar cuando la pantalla vuelve al foco
+  // Si tu navegación es más compleja (por ejemplo, pushReplacement), puede que quieras
+  // recargar los datos cuando la pantalla se "reanuda". Una forma sencilla es:
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Esto recargará los datos cada vez que la pantalla entre en el árbol de widgets
+    // o sus dependencias cambien (incluyendo la navegación de vuelta).
+    _loadStats();
+  }
+
+
+  Future<void> _loadStats() async {
+    if (!mounted) return; // Evitar setState si el widget no está montado
+    setState(() {
+      _isLoading = true;
+    });
+
+    final now = DateTime.now();
+    _totalCompletedCycles = await _statsService.getTotalCompletedCycles();
+    _percentageIncreaseLast7Days = await _statsService.getPercentageIncreaseLast7Days();
+    _dailyStats = await _statsService.getCyclesByDay(now);
+    _weeklyStats = await _statsService.getCyclesByWeek(now);
+    _monthlyStats = await _statsService.getCyclesByMonth(now);
+
+    if (mounted) { // Asegúrate de que el widget aún esté montado antes de llamar a setState
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Datos de ejemplo para la pestaña “Semana”:
-    final List<int> weeklyData = [5, 6, 4, 7, 8, 3, 9]; // valores ficticios Lun–Dom
-    final int totalWeeklyCycles = weeklyData.fold(0, (sum, item) => sum + item);
-    final int previousWeekTotal = 10; // ejemplo de la semana anterior
-    final double percentageChange = previousWeekTotal > 0
-        ? ((totalWeeklyCycles - previousWeekTotal) / previousWeekTotal) * 100
-        : 0;
-
-    return DefaultTabController(
-      length: 3, // Día, Semana, Mes
-      child: Scaffold(
-        backgroundColor: const Color(0xFF12211F),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF19332E),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            'Estadísticas',
-            style: TextStyle(color: Colors.white),
-          ),
-          centerTitle: true,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF244740),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: TabBar(
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white70,
-                  indicator: BoxDecoration(
-                    color: const Color(0xFF19332E),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  tabs: const [
-                    Tab(text: 'Día'),
-                    Tab(text: 'Semana'),
-                    Tab(text: 'Mes'),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF12211F), // Color de fondo uniforme
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF19332E), // Color de la AppBar
+        title: const Text('Estadísticas', style: TextStyle(color: Colors.white)),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white), // Color de los íconos de la AppBar
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF19E5C2), // Color del texto de la pestaña seleccionada
+          unselectedLabelColor: Colors.white70, // Color del texto de las pestañas no seleccionadas
+          indicatorColor: const Color(0xFF19E5C2), // Color de la línea indicadora
+          tabs: const [
+            Tab(text: 'Día'),
+            Tab(text: 'Semana'),
+            Tab(text: 'Mes'),
+          ],
         ),
-        body: TabBarView(
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF19E5C2)))
+          : RefreshIndicator( // Permite "tirar para recargar"
+        onRefresh: _loadStats,
+        child: TabBarView(
+          controller: _tabController,
           children: [
-            // Pestaña “Día” (por ahora repetimos datos de “Semana” como placeholder)
-            _buildStatisticsTab(
-              context: context,
-              labelList: const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-              dataList: weeklyData,
-              title: 'Ciclos pomodoro',
-              totalCycles: totalWeeklyCycles,
-              subtitle: 'Últimos 7 Días',
-              percentage: percentageChange,
-            ),
-            // Pestaña “Semana”
-            _buildStatisticsTab(
-              context: context,
-              labelList: const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-              dataList: weeklyData,
-              title: 'Ciclos pomodoro',
-              totalCycles: totalWeeklyCycles,
-              subtitle: 'Últimos 7 Días',
-              percentage: percentageChange,
-            ),
-            // Pestaña “Mes” (datos de ejemplo: 12 meses)
-            _buildStatisticsTab(
-              context: context,
-              labelList: const [
-                'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-                'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-              ],
-              dataList: [12, 15, 10, 18, 20, 5, 9, 14, 11, 19, 13, 22],
-              title: 'Ciclos pomodoro',
-              totalCycles: 168, // ejemplo de total mensual
-              subtitle: 'Últimos 12 Meses',
-              percentage: 5.0, // ejemplo
-            ),
+            _buildDailyStatsTab(),
+            _buildWeeklyStatsTab(),
+            _buildMonthlyStatsTab(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatisticsTab({
-    required BuildContext context,
-    required List<String> labelList,
-    required List<int> dataList,
-    required String title,
-    required int totalCycles,
-    required String subtitle,
-    required double percentage,
-  }) {
-    // Calculo el valor máximo para escalar barras
-    final int maxValue = dataList.isNotEmpty ? dataList.reduce((a, b) => a > b ? a : b) : 1;
+  Widget _buildSummarySection() {
+    String increaseText;
+    Color increaseColor;
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título “Ciclos pomodoro” y total grande
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+    if (_percentageIncreaseLast7Days >= 0) {
+      increaseText = '+${_percentageIncreaseLast7Days.toStringAsFixed(0)}%';
+      increaseColor = const Color(0xFF19E5C2); // Verde para aumento o cero
+    } else {
+      increaseText = '${_percentageIncreaseLast7Days.toStringAsFixed(0)}%';
+      increaseColor = Colors.red.shade400; // Rojo para disminución
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Ciclos pomodoro',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$_totalCompletedCycles',
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        Text(
+          'Últimos 7 Días $increaseText',
+          style: TextStyle(fontSize: 16, color: increaseColor),
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF244740), // Un tono más claro que el fondo pero oscuro
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Resumen',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              totalCycles.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 8),
+              const Text(
+                'Ciclos completados',
+                style: TextStyle(fontSize: 16, color: Colors.white60),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Subtítulo con porcentaje
-            Row(
-              children: [
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  (percentage >= 0 ? '+${percentage.toStringAsFixed(0)}%' : '${percentage.toStringAsFixed(0)}%'),
-                  style: TextStyle(
-                    color: percentage >= 0 ? Colors.greenAccent : Colors.redAccent,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Gráfica de barras
-            SizedBox(
-              height: 200,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(labelList.length, (index) {
-                  final double heightFactor = maxValue > 0
-                      ? (dataList[index] / maxValue)
-                      : 0.0;
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: FractionallySizedBox(
-                              alignment: Alignment.bottomCenter,
-                              heightFactor: heightFactor,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF244740),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            labelList[index],
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+              Text(
+                '$_totalCompletedCycles',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
               ),
-            ),
-            const SizedBox(height: 24),
-            // Resumen en tarjeta
-            const Text(
-              'Resumen',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF244740),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Ciclos completados',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    totalCycles.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildDailyStatsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSummarySection(),
+          const Text(
+            'Ciclos por Día',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70),
+          ),
+          const SizedBox(height: 16),
+          _buildBarChart(_dailyStats),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyStatsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSummarySection(),
+          const Text(
+            'Ciclos por Semana',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70),
+          ),
+          const SizedBox(height: 16),
+          _buildBarChart(_weeklyStats),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthlyStatsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSummarySection(),
+          const Text(
+            'Ciclos por Mes',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70),
+          ),
+          const SizedBox(height: 16),
+          _buildBarChart(_monthlyStats),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(Map<String, int> data) {
+    if (data.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'No hay datos disponibles para mostrar.',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    // Convertir el mapa a una lista de BarChartGroupData
+    List<BarChartGroupData> barGroups = [];
+    List<String> labels = data.keys.toList();
+    double maxY = 0;
+
+    // Calcular el valor máximo para el eje Y
+    data.values.forEach((value) {
+      if (value > maxY) {
+        maxY = value.toDouble();
+      }
+    });
+    // Añadir un poco de margen al maxY para que la barra más alta no toque el tope
+    maxY = (maxY + 2).toDouble();
+    if (maxY == 2) maxY = 5; // Asegura un mínimo de 5 si todos son 0 o 1
+
+
+    for (int i = 0; i < labels.length; i++) {
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: data[labels[i]]!.toDouble(),
+              color: const Color(0xFF19E5C2), // Color de las barras
+              width: 16,
+              borderRadius: BorderRadius.circular(4),
             ),
           ],
+          showingTooltipIndicators: [0], // Muestra el valor en la parte superior de la barra
+        ),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: 1.6, // Relación de aspecto para el gráfico
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        color: const Color(0xFF244740), // Color de fondo del gráfico
+        child: Padding(
+          padding: const EdgeInsets.only(top: 16, right: 16, left: 6, bottom: 6),
+          child: BarChart(
+            BarChartData(
+              maxY: maxY, // Establece el valor máximo del eje Y
+              barGroups: barGroups,
+              gridData: const FlGridData(show: false), // Oculta las líneas de la cuadrícula
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: Colors.white10, width: 1), // Borde del gráfico
+              ),
+              titlesData: FlTitlesData(
+                show: true,
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          labels[value.toInt()],
+                          style: const TextStyle(color: Colors.white70, fontSize: 10),
+                        ),
+                      );
+                    },
+                    reservedSize: 30, // Espacio reservado para las etiquetas inferiores
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      if (value == 0) return const Text('', style: TextStyle(color: Colors.white70, fontSize: 10)); // No mostrar 0 en el eje
+                      return Text(
+                        value.toInt().toString(),
+                        style: const TextStyle(color: Colors.white70, fontSize: 10),
+                      );
+                    },
+                    reservedSize: 28, // Espacio reservado para las etiquetas del eje Y
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipBgColor: Colors.blueGrey,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    String label = labels[group.x.toInt()];
+                    return BarTooltipItem(
+                      '$label\n',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      children: <TextSpan>[
+                        TextSpan(
+                          text: rod.toY.toInt().toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
