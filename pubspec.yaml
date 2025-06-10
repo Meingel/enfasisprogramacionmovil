@@ -1,53 +1,64 @@
-name: enfasisprogramacionmovil
-description: "Temporizador Pomodoro con sonidos ambientales y estadísticas."
-publish_to: 'none' # Elimina esta línea si deseas publicar en pub.dev.
-version: 1.0.0+1
+name: enfasisprogramacionmovil # Aquí estoy definiendo el nombre de mi proyecto, que es "enfasisprogramacionmovil".
+description: "Temporizador Pomodoro con sonidos ambientales y estadísticas." # Esta es una breve descripción de lo que hace mi aplicación: un temporizador Pomodoro con sonidos ambientales y estadísticas.
+publish_to: 'none' # Estoy indicando aquí que no quiero publicar este paquete en pub.dev.
+version: 1.0.0+1 # Esta es la versión de mi aplicación. La parte '1.0.0' es la versión principal y '+1' es el código de compilación.
 
 environment:
-  sdk: '>=3.0.0 <4.0.0' # He ajustado esto para que sea más flexible con Flutter 3.x, manteniendo el enfoque en Dart 3
+  sdk: '>=3.0.0 <4.0.0' # Aquí estoy especificando el rango de versiones del SDK de Dart que mi aplicación soporta. Estoy buscando cualquier versión desde la 3.0.0 hasta antes de la 4.0.0.
 
-dependencies:
+dependencies: # En esta sección, yo declaro las dependencias que mi aplicación necesita para funcionar.
   flutter:
-    sdk: flutter
+    sdk: flutter # Estoy añadiendo el SDK de Flutter como una dependencia, lo que me permite construir mi interfaz de usuario.
 
   # Cupertino Icons para iOS
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.8 # Incluyo este paquete para usar los iconos de estilo iOS en mi aplicación. La ' ^ ' significa que acepto cualquier versión compatible con la 1.0.8.
 
   # Paquete para persistir preferencias
-  shared_preferences: ^2.2.3
+  shared_preferences: ^2.2.3 # Estoy usando este paquete para almacenar datos simples y persistentes, como las preferencias del usuario.
 
   # Última versión estable de audioplayers
-  audioplayers: ^6.0.0
+  audioplayers: ^6.0.0 # Este paquete lo uso para reproducir sonidos y audio en mi aplicación.
 
-  # === DEPENDENCIAS PARA ESTADISTICAS Y LOCALIZACION ===
+  # === DEPENDENCIAS PARA ESTADISTICAS Y LOCALIZACION === # Esto es solo un comentario para organizar mis dependencias.
   # Para formatear fechas y horas (necesario para StatsService)
-  intl: ^0.20.2
+  intl: ^0.20.2 # Yo uso este paquete para formatear fechas, horas y números, lo cual es importante para las estadísticas de mi app.
 
   # Para crear los gráficos de barras en la pantalla de estadísticas
-  fl_chart: 0.65.0 # Mantenemos esta versión que te ha dado menos problemas
+  fl_chart: 0.65.0 # Estoy utilizando esta versión específica de `fl_chart` para generar los gráficos de barras en la sección de estadísticas. Mantengo esta versión porque me ha funcionado bien.
 
   # Para la localización de fechas y otros elementos de UI
-  flutter_localizations: # <--- ¡ESTA ES LA LÍNEA QUE DEBEMOS AÑADIR!
-    sdk: flutter
-  # ====================================================
+  flutter_localizations: # Aquí estoy añadiendo este paquete para manejar la localización (idiomas, formatos de fecha, etc.) en mi aplicación.
+    sdk: flutter # Estoy indicando que este paquete es parte del SDK de Flutter.
+  # ==================================================== # Otro comentario para organizar.
 
-dev_dependencies:
+dev_dependencies: # En esta sección, yo listo las dependencias que solo se usan durante el desarrollo y las pruebas, no en la aplicación final.
   flutter_test:
-    sdk: flutter
+    sdk: flutter # Incluyo este paquete para escribir pruebas unitarias y de widgets para mi aplicación Flutter.
 
-  flutter_lints: ^5.0.0
+  flutter_lints: ^5.0.0 # Uso este paquete para aplicar un conjunto de reglas de "linting" a mi código, lo que me ayuda a mantenerlo limpio y consistente.
 
-flutter:
-  uses-material-design: true
+  flutter_launcher_icons: ^0.13.1 # Estoy usando esta herramienta para generar los iconos de la aplicación para Android e iOS.
+
+flutter: # Esta sección contiene configuraciones específicas de Flutter para mi proyecto.
+  uses-material-design: true # Con esta línea, yo le indico a Flutter que use el diseño de Material Design en mi aplicación.
 
   # Assets (imágenes + audios) para los sonidos
-  assets:
-    - assets/images/lluvia.jpg
-    - assets/images/bosque.jpg
-    - assets/images/cafeteria.jpg
-    - assets/images/ruido_blanco.jpg
+  assets: # Aquí yo especifico los recursos (assets) que mi aplicación va a utilizar, como imágenes y archivos de audio.
+    - assets/images/lluvia.jpg # Incluyo esta imagen.
+    - assets/images/bosque.jpg # Incluyo esta imagen.
+    - assets/images/cafeteria.jpg # Incluyo esta imagen.
+    - assets/images/ruido_blanco.jpg # Incluyo esta imagen.
 
-    - assets/sounds/lluvia.mp3
-    - assets/sounds/bosque.mp3
-    - assets/sounds/cafeteria.mp3
-    - assets/sounds/ruido_blanco.mp3
+    - assets/sounds/lluvia.mp3 # Incluyo este archivo de audio.
+    - assets/sounds/bosque.mp3 # Incluyo este archivo de audio.
+    - assets/sounds/cafeteria.mp3 # Incluyo este archivo de audio.
+    - assets/sounds/ruido_blanco.mp3 # Incluyo este archivo de audio.
+
+flutter_launcher_icons: # Esta es la configuración para el paquete `flutter_launcher_icons`.
+  android: "launcher_icon" # Defino el nombre del archivo del icono que se generará para Android.
+  ios: false # Estoy indicando que no quiero generar un icono para iOS.
+  image_path: "assets/app_icon/icon.png" # Aquí especifico la ruta de la imagen que usaré para generar el icono de mi aplicación.
+  min_sdk_android: 21 # Estoy estableciendo la versión mínima del SDK de Android que mi aplicación soporta.
+  remove_alpha_ios: true # Con esta opción, le pido que elimine la transparencia del icono si lo estoy generando para iOS.
+  # adaptive_icon_foreground: "assets/app_icon/foreground.png" # Esta es una opción comentada que podría usar para definir el primer plano de un icono adaptativo en Android.
+  # adaptive_icon_background: "#ffffff" # Esta es otra opción comentada que podría usar para definir el color de fondo de un icono adaptativo en Android.

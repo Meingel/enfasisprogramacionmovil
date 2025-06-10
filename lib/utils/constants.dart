@@ -1,4 +1,3 @@
-// lib/utils/constants.dart
-class Constants {
-  static const String completedCyclesTimestampsKey = 'completed_cycles_timestamps';
+class Constants { // Estoy declarando una clase llamada `Constants`. La uso para agrupar valores que no van a cambiar durante la ejecución de mi aplicación.
+  static const String completedCyclesTimestampsKey = 'completed_cycles_timestamps'; // Estoy definiendo una constante estática de tipo `String`. Su nombre es `completedCyclesTimestampsKey` y su valor es la cadena de texto 'completed_cycles_timestamps'. La usaré como una clave para guardar o recuperar datos en el almacenamiento persistente de mi aplicación.
 }
